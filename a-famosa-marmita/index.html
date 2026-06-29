@@ -403,7 +403,7 @@ function buildPills(selectAll){
 function aggregate(){
  const list=periodList().filter(p=>selected.has(p.wk||'month'));
  const keys=['bruto','pedidos','nao_canc','cancelados','canc_val','repasse','receb_direto','total_recebido',
-  'comissao','transacao','servico','conveniencia','promo_loja','frete_gratis','ads','ajustes','mensalidade','coinvest','mkt'];
+  'comissao','transacao','servico','conveniencia','promo_loja','frete_gratis','ads','ajustes','mensalidade','coinvest','entrega_ifood','mkt'];
  const a={}; keys.forEach(k=>a[k]=0);
  list.forEach(p=>keys.forEach(k=>a[k]+=(p[k]||0)));
  a.ticket = a.nao_canc? a.bruto/a.nao_canc : 0;
@@ -417,20 +417,26 @@ function renderFiltered(){
   ['Recebido direto','R$ '+fmt(w.receb_direto)],['Total recebido','R$ '+fmt(w.total_recebido)],
   ['Pedidos',fmt0(w.pedidos)],['Ticket médio','R$ '+fmt(w.ticket)],['Custo mkt/pedido','R$ '+fmt(w.mkt_por_ped)]];
  document.getElementById('cards').innerHTML=cd.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${w.label}</div></div>`).join('');
+ const _promoLiq=Math.max(0,(w.promo_loja+w.frete_gratis)-w.coinvest);
  const dd=[['Repasse depositado',w.repasse,'#C8102E'],['Recebido direto',w.receb_direto,'#e8763a'],
   ['Comissão iFood',w.comissao,'#f0b429'],['Taxa transação',w.transacao,'#7cb342'],
-  ['Taxa serviço',w.servico,'#26a69a'],['Promoção loja',w.promo_loja,'#5c6bc0'],
-  ['Frete grátis',w.frete_gratis,'#8e44ad'],['Anúncios/Ads',w.ads,'#ec407a'],
+  ['Taxa serviço',w.servico,'#26a69a'],['Promoções (líq.)',_promoLiq,'#5c6bc0'],
+  ['Entrega iFood',w.entrega_ifood||0,'#5d4037'],['Anúncios/Ads',w.ads,'#ec407a'],
   ['Conveniência',w.conveniencia,'#90a4ae'],['Mensalidade',w.mensalidade,'#bdbdbd']].filter(x=>Math.abs(x[1])>0.005);
  mk('donut','doughnut',{labels:dd.map(x=>x[0]),datasets:[{data:dd.map(x=>Math.abs(x[1])),backgroundColor:dd.map(x=>x[2]),borderWidth:2,borderColor:'#fff'}]},
   {plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:ctx=>ctx.label+': R$ '+fmt(ctx.raw)+' ('+(ctx.raw/w.bruto*100).toFixed(1)+'%)'}}},cutout:'55%'});
- const costs=[['Comissão iFood',w.comissao],['Taxa de transação',w.transacao],['Taxa de serviço',w.servico],
-  ['Taxa de conveniência',w.conveniencia],['Promoção loja (itens)',w.promo_loja],['Frete grátis (loja)',w.frete_gratis],
+ const promoBruto=w.promo_loja+w.frete_gratis, subsidio=w.coinvest, promoLiq=promoBruto-subsidio;
+ const fixos=[['Comissão iFood',w.comissao],['Taxa de transação',w.transacao],['Taxa de serviço',w.servico],
+  ['Taxa de conveniência',w.conveniencia],['Entrega iFood',w.entrega_ifood||0],
   ['Anúncios / iFood Ads',w.ads],['Mensalidade',w.mensalidade]].filter(x=>Math.abs(x[1])>0.005);
- let tot=costs.reduce((s,x)=>s+x[1],0);
+ let tot=fixos.reduce((s,x)=>s+x[1],0)+promoLiq;
+ const row=(k,v,cls)=>`<tr${cls?' class="'+cls+'"':''}><td>${k}</td><td>${fmt(v)}</td><td>${(v/w.bruto*100).toFixed(1)}%</td></tr>`;
  document.getElementById('costtbl').innerHTML='<thead><tr><th>Custo</th><th>R$</th><th>% bruto</th></tr></thead><tbody>'+
-  costs.map(([k,v])=>`<tr><td>${k}</td><td>${fmt(v)}</td><td>${(v/w.bruto*100).toFixed(1)}%</td></tr>`).join('')+
-  `<tr class="tot"><td>Total custos</td><td>${fmt(tot)}</td><td>${(tot/w.bruto*100).toFixed(1)}%</td></tr></tbody>`;
+  fixos.map(([k,v])=>row(k,v)).join('')+
+  row('Promoções (bruto)',promoBruto)+
+  `<tr style="color:#0a7d3c"><td>(−) Subsídio iFood (co-investimento)</td><td>−${fmt(subsidio)}</td><td>−${(subsidio/w.bruto*100).toFixed(1)}%</td></tr>`+
+  `<tr style="font-weight:600"><td>= Promoções (líquido)</td><td>${fmt(promoLiq)}</td><td>${(promoLiq/w.bruto*100).toFixed(1)}%</td></tr>`+
+  `<tr class="tot"><td>Total custos (líquido)</td><td>${fmt(tot)}</td><td>${(tot/w.bruto*100).toFixed(1)}%</td></tr></tbody>`;
 }
 granSel.onchange=()=>{buildPills(true);buildBase();applyFilter();};
 document.getElementById('pall').onclick=()=>{buildPills(true);applyFilter();};
