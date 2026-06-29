@@ -323,6 +323,9 @@ th.dlt{font-size:10px}
 <div class="panel"><h3>Custos do período (R$ e % do bruto)<span class="tag-flt">filtrável</span></h3><div style="overflow:auto;max-height:300px"><table id="costtbl"></table></div></div>
 </div>
 
+<div class="section-title">Quem bancou as promoções — sua loja × iFood (segue o filtro acima)</div>
+<div class="panel" style="margin-bottom:18px"><div id="invsplit"></div><div style="font-size:12px;color:var(--g);margin-top:10px;line-height:1.6">O <b>investimento da loja</b> (promoção + frete grátis que você bancou) é custo real seu. O <b>incentivo do iFood</b> é desconto extra que o iFood adiciona para o cliente — <b>dinheiro do iFood, não entra nos seus custos</b>. Os percentuais mostram quanto cada um pôs no desconto total que o cliente recebeu.</div></div>
+
 <div class="section-title">Visão por período — segue o filtro “Análise de período” acima</div>
 <div class="grid2">
 <div class="panel"><h3>Bruto, repasse e recebido direto por período<span class="tag-fix">segue filtro</span></h3><div class="chartbox"><canvas id="bars"></canvas></div></div>
@@ -417,26 +420,43 @@ function renderFiltered(){
   ['Recebido direto','R$ '+fmt(w.receb_direto)],['Total recebido','R$ '+fmt(w.total_recebido)],
   ['Pedidos',fmt0(w.pedidos)],['Ticket médio','R$ '+fmt(w.ticket)],['Custo mkt/pedido','R$ '+fmt(w.mkt_por_ped)]];
  document.getElementById('cards').innerHTML=cd.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${w.label}</div></div>`).join('');
- const _promoLiq=Math.max(0,(w.promo_loja+w.frete_gratis)-w.coinvest);
  const dd=[['Repasse depositado',w.repasse,'#C8102E'],['Recebido direto',w.receb_direto,'#e8763a'],
   ['Comissão iFood',w.comissao,'#f0b429'],['Taxa transação',w.transacao,'#7cb342'],
-  ['Taxa serviço',w.servico,'#26a69a'],['Promoções (líq.)',_promoLiq,'#5c6bc0'],
-  ['Entrega iFood',w.entrega_ifood||0,'#5d4037'],['Anúncios/Ads',w.ads,'#ec407a'],
+  ['Taxa serviço',w.servico,'#26a69a'],['Promoção loja',w.promo_loja,'#5c6bc0'],
+  ['Frete grátis',w.frete_gratis,'#8e44ad'],['Entrega iFood',w.entrega_ifood||0,'#5d4037'],['Anúncios/Ads',w.ads,'#ec407a'],
   ['Conveniência',w.conveniencia,'#90a4ae'],['Mensalidade',w.mensalidade,'#bdbdbd']].filter(x=>Math.abs(x[1])>0.005);
  mk('donut','doughnut',{labels:dd.map(x=>x[0]),datasets:[{data:dd.map(x=>Math.abs(x[1])),backgroundColor:dd.map(x=>x[2]),borderWidth:2,borderColor:'#fff'}]},
   {plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:ctx=>ctx.label+': R$ '+fmt(ctx.raw)+' ('+(ctx.raw/w.bruto*100).toFixed(1)+'%)'}}},cutout:'55%'});
- const promoBruto=w.promo_loja+w.frete_gratis, subsidio=w.coinvest, promoLiq=promoBruto-subsidio;
  const fixos=[['Comissão iFood',w.comissao],['Taxa de transação',w.transacao],['Taxa de serviço',w.servico],
   ['Taxa de conveniência',w.conveniencia],['Entrega iFood',w.entrega_ifood||0],
-  ['Anúncios / iFood Ads',w.ads],['Mensalidade',w.mensalidade]].filter(x=>Math.abs(x[1])>0.005);
- let tot=fixos.reduce((s,x)=>s+x[1],0)+promoLiq;
+  ['Anúncios / iFood Ads',w.ads],['Mensalidade',w.mensalidade],
+  ['Promoção loja (itens)',w.promo_loja],['Frete grátis (loja)',w.frete_gratis]].filter(x=>Math.abs(x[1])>0.005);
+ let tot=fixos.reduce((s,x)=>s+x[1],0);
  const row=(k,v,cls)=>`<tr${cls?' class="'+cls+'"':''}><td>${k}</td><td>${fmt(v)}</td><td>${(v/w.bruto*100).toFixed(1)}%</td></tr>`;
  document.getElementById('costtbl').innerHTML='<thead><tr><th>Custo</th><th>R$</th><th>% bruto</th></tr></thead><tbody>'+
   fixos.map(([k,v])=>row(k,v)).join('')+
-  row('Promoções (bruto)',promoBruto)+
-  `<tr style="color:#0a7d3c"><td>(−) Subsídio iFood (co-investimento)</td><td>−${fmt(subsidio)}</td><td>−${(subsidio/w.bruto*100).toFixed(1)}%</td></tr>`+
-  `<tr style="font-weight:600"><td>= Promoções (líquido)</td><td>${fmt(promoLiq)}</td><td>${(promoLiq/w.bruto*100).toFixed(1)}%</td></tr>`+
-  `<tr class="tot"><td>Total custos (líquido)</td><td>${fmt(tot)}</td><td>${(tot/w.bruto*100).toFixed(1)}%</td></tr></tbody>`;
+  `<tr class="tot"><td>Total custos (loja)</td><td>${fmt(tot)}</td><td>${(tot/w.bruto*100).toFixed(1)}%</td></tr></tbody>`;
+ // --- card: quem bancou as promoções (loja x iFood) ---
+ const invLoja=w.promo_loja+w.frete_gratis, invIfood=w.coinvest, invTot=invLoja+invIfood;
+ const pL=invTot>0?invLoja/invTot*100:0, pI=invTot>0?invIfood/invTot*100:0;
+ document.getElementById('invsplit').innerHTML=
+  `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+     <div style="flex:1;min-width:200px;background:#f6f4fb;border:1px solid #ddd6f0;border-radius:10px;padding:14px 16px">
+       <div style="font-size:12px;color:var(--g);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Investimento da loja</div>
+       <div style="font-size:24px;font-weight:700;color:#5c6bc0;margin-top:4px">R$ ${fmt(invLoja)}</div>
+       <div style="font-size:13px;color:var(--g);margin-top:2px">${pL.toFixed(1)}% do desconto total</div>
+     </div>
+     <div style="flex:1;min-width:200px;background:#eafaf0;border:1px solid #c4ebd4;border-radius:10px;padding:14px 16px">
+       <div style="font-size:12px;color:var(--g);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Incentivo do iFood ⁺</div>
+       <div style="font-size:24px;font-weight:700;color:var(--ok);margin-top:4px">R$ ${fmt(invIfood)}</div>
+       <div style="font-size:13px;color:var(--g);margin-top:2px">${pI.toFixed(1)}% do desconto total</div>
+     </div>
+   </div>
+   <div style="height:26px;border-radius:8px;overflow:hidden;display:flex;border:1px solid var(--line)">
+     <div style="width:${pL.toFixed(1)}%;background:#5c6bc0;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">${pL>=12?'Loja '+pL.toFixed(0)+'%':''}</div>
+     <div style="width:${pI.toFixed(1)}%;background:var(--ok);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">${pI>=12?'iFood '+pI.toFixed(0)+'%':''}</div>
+   </div>
+   <div style="font-size:13px;color:var(--dark);margin-top:10px">Desconto total entregue ao cliente: <b>R$ ${fmt(invTot)}</b> — desses, <b>R$ ${fmt(invIfood)}</b> (${pI.toFixed(1)}%) saíram do iFood, não do seu caixa.</div>`;
 }
 granSel.onchange=()=>{buildPills(true);buildBase();applyFilter();};
 document.getElementById('pall').onclick=()=>{buildPills(true);applyFilter();};
@@ -525,7 +545,7 @@ function renderCompare(){
  }).join('')+'</tbody>';
  const ncols=1+cols.length*3;
  const temAnd=cols.some(c=>c.em_andamento);
- const nota='⁺ Subsídio iFood = co-investimento (aporte, já no bruto). As colunas Δ comparam cada período '+(mode==='seq'?'com o período anterior selecionado':'com a base escolhida')+'.'+(temAnd?' <b>* período em andamento</b> — ainda não fechou; comparações com ele são parciais.':'');
+ const nota='⁺ Subsídio iFood = incentivo que o iFood adiciona à promoção (dinheiro do iFood, não da loja — informativo, não entra nos custos). As colunas Δ comparam cada período '+(mode==='seq'?'com o período anterior selecionado':'com a base escolhida')+'.'+(temAnd?' <b>* período em andamento</b> — ainda não fechou; comparações com ele são parciais.':'');
  box.innerHTML=head+body+'<tfoot><tr><td colspan="'+ncols+'" style="font-size:11px;color:var(--g);text-align:left;padding-top:8px">'+nota+'</td></tr></tfoot>';
 }
 cmpMode.onchange=renderCompare; cmpBase.onchange=renderCompare;
