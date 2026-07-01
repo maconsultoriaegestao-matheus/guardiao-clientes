@@ -320,7 +320,7 @@ th.dlt{font-size:10px}
 <div class="section-title">Reagem ao filtro de período acima</div>
 <div class="grid2">
 <div class="panel"><h3>Composição do faturamento bruto<span class="tag-flt">filtrável</span></h3><div class="chartbox"><canvas id="donut"></canvas></div></div>
-<div class="panel"><h3>Custos do período (R$ e % do bruto)<span class="tag-flt">filtrável</span></h3><div style="overflow:auto;max-height:300px"><table id="costtbl"></table></div></div>
+<div class="panel"><h3>Custos do período (R$ e % da base financeira)<span class="tag-flt">filtrável</span></h3><div style="overflow:auto;max-height:300px"><table id="costtbl"></table></div></div>
 </div>
 
 <div class="section-title">Quem bancou as promoções — sua loja × iFood (segue o filtro acima)</div>
@@ -432,10 +432,12 @@ function renderFiltered(){
   ['Anúncios / iFood Ads',w.ads],['Mensalidade',w.mensalidade],
   ['Promoção loja (itens)',w.promo_loja],['Frete grátis (loja)',w.frete_gratis]].filter(x=>Math.abs(x[1])>0.005);
  let tot=fixos.reduce((s,x)=>s+x[1],0);
- const row=(k,v,cls)=>`<tr${cls?' class="'+cls+'"':''}><td>${k}</td><td>${fmt(v)}</td><td>${(v/w.bruto*100).toFixed(1)}%</td></tr>`;
- document.getElementById('costtbl').innerHTML='<thead><tr><th>Custo</th><th>R$</th><th>% bruto</th></tr></thead><tbody>'+
+ const baseFin=w.total_recebido+tot; // base consistente: mesma régua dos custos (conciliação)
+ const row=(k,v,cls)=>`<tr${cls?' class="'+cls+'"':''}><td>${k}</td><td>${fmt(v)}</td><td>${(v/baseFin*100).toFixed(1)}%</td></tr>`;
+ document.getElementById('costtbl').innerHTML='<thead><tr><th>Custo</th><th>R$</th><th>% base fin.</th></tr></thead><tbody>'+
   fixos.map(([k,v])=>row(k,v)).join('')+
-  `<tr class="tot"><td>Total custos (loja)</td><td>${fmt(tot)}</td><td>${(tot/w.bruto*100).toFixed(1)}%</td></tr></tbody>`;
+  `<tr class="tot"><td>Total custos (loja)</td><td>${fmt(tot)}</td><td>${(tot/baseFin*100).toFixed(1)}%</td></tr></tbody>`
+  +`<tfoot><tr><td colspan="3" style="font-size:10.5px;color:var(--g);font-weight:400;padding-top:8px;line-height:1.5;border:0">Os percentuais usam como base o faturamento da <b>conciliação financeira</b> (total recebido + custos = ${fmt(baseFin)}), que é a mesma fonte dos custos. Por isso são exatos. O <i>Faturamento bruto</i> exibido no topo vem do relatório de <b>pedidos</b> (valor de cardápio) e pode diferir um pouco por causa do período de apuração — não tente conferir por subtração entre as duas fontes.</td></tr></tfoot>`;
  // --- card: quem bancou as promoções (loja x iFood) ---
  const invLoja=w.promo_loja+w.frete_gratis, invIfood=w.coinvest, invTot=invLoja+invIfood;
  const pL=invTot>0?invLoja/invTot*100:0, pI=invTot>0?invIfood/invTot*100:0;
